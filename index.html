@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>KS LAB – Natural Photo Editor</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Outfit:wght@300;400;500;600&display=swap"
+    rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0e0f0d;
+      --glass: rgba(255, 255, 255, 0.04);
+      --glass-border: rgba(255, 255, 255, 0.10);
+      --ac: #a8e063;
+      --ac2: #56ab2f;
+      --tx: #f2f2ee;
+      --muted: rgba(242, 242, 238, 0.45);
+      --ok: #63e0a8;
+    }
+
+    html,
+    body {
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════
+   PHOTOSHOP BOKEH BACKGROUND
+══════════════════════════════════════════ */
+    body {
+      background: var(--bg);
+      color: var(--tx);
+      font-family: 'Outfit', sans-serif;
+      position: relative;
+    }
+
+    /* Multi-layer blurred bokeh orbs — mimics PS lens blur */
+    .bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.55;
+      animation: drift linear infinite;
+    }
+
+    .orb1 {
+      width: 620px;
+      height: 620px;
+      background: radial-gradient(circle, #2d5a1b, transparent 70%);
+      top: -15%;
+      left: -10%;
+      animation-duration: 28s;
+      animation-delay: 0s;
+    }
+
+    .orb2 {
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, #1a3a10, transparent 70%);
+      top: 30%;
+      right: -8%;
+      animation-duration: 22s;
+      animation-delay: -8s;
+    }
+
+    .orb3 {
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, #3d6b25, transparent 70%);
+      bottom: -10%;
+      left: 20%;
+      animation-duration: 32s;
+      animation-delay: -15s;
+    }
+
+    .orb4 {
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, #a8e06322, transparent 70%);
+      top: 50%;
+      left: 45%;
+      animation-duration: 18s;
+      animation-delay: -5s;
+    }
+
+    .orb5 {
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, #56ab2f33, transparent 70%);
+      top: 10%;
+      left: 60%;
+      animation-duration: 24s;
+      animation-delay: -12s;
+    }
+
+    /* Bokeh particles (sharp tiny circles) */
+    .bokeh-wrap {
+      position: absolute;
+      inset: 0;
+    }
+
+    .bk {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(168, 224, 99, 0.3);
+      background: radial-gradient(circle, rgba(168, 224, 99, 0.15), transparent);
+      animation: bokeh-pulse ease-in-out infinite;
+    }
+
+    .bk:nth-child(1) {
+      width: 12px;
+      height: 12px;
+      top: 12%;
+      left: 18%;
+      animation-duration: 4s;
+      animation-delay: 0s;
+    }
+
+    .bk:nth-child(2) {
+      width: 8px;
+      height: 8px;
+      top: 28%;
+      left: 72%;
+      animation-duration: 5s;
+      animation-delay: -1.5s;
+    }
+
+    .bk:nth-child(3) {
+      width: 16px;
+      height: 16px;
+      top: 65%;
+      left: 85%;
+      animation-duration: 3.5s;
+      animation-delay: -2s;
+    }
+
+    .bk:nth-child(4) {
+      width: 6px;
+      height: 6px;
+      top: 80%;
+      left: 25%;
+      animation-duration: 6s;
+      animation-delay: -3s;
+    }
+
+    .bk:nth-child(5) {
+      width: 10px;
+      height: 10px;
+      top: 45%;
+      left: 10%;
+      animation-duration: 4.5s;
+      animation-delay: -0.5s;
+    }
+
+    .bk:nth-child(6) {
+      width: 14px;
+      height: 14px;
+      top: 20%;
+      left: 90%;
+      animation-duration: 5.5s;
+      animation-delay: -4s;
+    }
+
+    .bk:nth-child(7) {
+      width: 7px;
+      height: 7px;
+      top: 90%;
+      left: 55%;
+      animation-duration: 3.8s;
+      animation-delay: -2.5s;
+    }
+
+    .bk:nth-child(8) {
+      width: 18px;
+      height: 18px;
+      top: 55%;
+      left: 42%;
+      animation-duration: 7s;
+      animation-delay: -1s;
+    }
+
+    /* Grain overlay for depth */
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.035;
+    }
+
+    @keyframes drift {
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      33% {
+        transform: translate(40px, -30px) scale(1.08);
+      }
+
+      66% {
+        transform: translate(-20px, 50px) scale(0.95);
+      }
+
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+    }
+
+    @keyframes bokeh-pulse {
+
+      0%,
+      100% {
+        opacity: 0.2;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.7;
+        transform: scale(1.4);
+      }
+    }
+
+    /* ══════════════════════════════════════════
+   LAYOUT
+══════════════════════════════════════════ */
+    .page {
+      position: relative;
+      z-index: 2;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 28px 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      margin-bottom: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--ac2), var(--ac));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 20px rgba(168, 224, 99, 0.3);
+    }
+
+    .brand-text {}
+
+    .brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, var(--ac), #d4f79e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-sub {
+      font-size: 10px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .header-badge {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--ac);
+      border: 1px solid rgba(168, 224, 99, 0.25);
+      padding: 5px 14px;
+      border-radius: 20px;
+      background: rgba(168, 224, 99, 0.06);
+    }
+
+    /* ── HERO UPLOAD SECTION ── */
+    #uploadWrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 0 20px;
+      gap: 0;
+    }
+
+    /* Monkey mascot */
+    .monkey-wrap {
+      position: relative;
+      margin-bottom: -8px;
+      z-index: 3;
+      animation: monkey-idle 3s ease-in-out infinite;
+    }
+
+    @keyframes monkey-idle {
+
+      0%,
+      100% {
+        transform: translateY(0) rotate(-1deg);
+      }
+
+      50% {
+        transform: translateY(-10px) rotate(1deg);
+      }
+    }
+
+    .monkey {
+      width: 110px;
+      height: 110px;
+      background: linear-gradient(145deg, #5c3317, #8B4513);
+      border-radius: 50% 50% 45% 45%;
+      position: relative;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 3px rgba(168, 224, 99, 0.2);
+    }
+
+    /* ears */
+    .monkey::before,
+    .monkey::after {
+      content: '';
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: #8B4513;
+      border-radius: 50%;
+      top: 20px;
+    }
+
+    .monkey::before {
+      left: -12px;
+      box-shadow: inset 6px 0 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .monkey::after {
+      right: -12px;
+      box-shadow: inset -6px 0 0 rgba(0, 0, 0, 0.3);
+    }
+
+    /* face */
+    .monkey-face {
+      position: absolute;
+      width: 72px;
+      height: 60px;
+      background: linear-gradient(160deg, #d4956a, #c4855a);
+      border-radius: 50%;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* eyes */
+    .monkey-eyes {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 54px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .eye {
+      width: 14px;
+      height: 14px;
+      background: #1a0a00;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .eye::after {
+      content: '';
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+    }
+
+    /* nose */
+    .monkey-nose {
+      position: absolute;
+      top: 34px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 18px;
+      height: 10px;
+      background: #7a3a10;
+      border-radius: 50%;
+    }
+
+    /* smile */
+    .monkey-mouth {
+      position: absolute;
+      top: 46px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 28px;
+      height: 10px;
+      border-bottom: 3px solid #5a2a08;
+      border-radius: 0 0 50% 50%;
+    }
+
+    /* cap */
+    .monkey-cap {
+      position: absolute;
+      width: 88px;
+      height: 40px;
+      background: linear-gradient(135deg, #1a1a1a, #333);
+      border-radius: 50% 50% 0 0;
+      top: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      overflow: hidden;
+    }
+
+    .monkey-cap::after {
+      content: 'KS';
+      position: absolute;
+      bottom: 4px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Playfair Display', serif;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ac);
+      letter-spacing: 1px;
+    }
+
+    /* tail hint */
+    .monkey-arm {
+      position: absolute;
+      width: 18px;
+      height: 40px;
+      background: #8B4513;
+      border-radius: 10px;
+      bottom: -20px;
+      right: -8px;
+      transform: rotate(20deg);
+    }
+
+    /* ── UPLOAD CARD ── */
+    .upload-card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 36px 40px 40px;
+      text-align: center;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: border-color .3s, box-shadow .3s;
+      cursor: pointer;
+    }
+
+    .upload-card:hover,
+    .upload-card.over {
+      border-color: rgba(168, 224, 99, 0.4);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 48px rgba(168, 224, 99, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .upload-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 700;
+      font-style: italic;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.7));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .upload-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 28px;
+    }
+
+    /* THE STYLED UPLOAD BUTTON */
+    .pick-btn {
+      position: relative;
+      z-index: 5;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 36px;
+      background: linear-gradient(135deg, var(--ac2) 0%, var(--ac) 100%);
+      color: #0a1a04;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      border-radius: 50px;
+      box-shadow: 0 4px 24px rgba(86, 171, 47, 0.45), 0 0 0 0 rgba(168, 224, 99, 0.4);
+      transition: all .25s;
+      animation: pulse-ring 2.5s ease-out infinite;
+    }
+
+    .pick-btn:hover {
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 8px 36px rgba(86, 171, 47, 0.6), 0 0 0 6px rgba(168, 224, 99, 0.15);
+      animation: none;
+    }
+
+    .pick-btn:active {
+      transform: translateY(1px) scale(0.98);
+    }
+
+    .pick-btn svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse-ring {
+      0% {
+        box-shadow: 0 4px 24px rgba(86, 171, 47, 0.45), 0 0 0 0 rgba(168, 224, 99, 0.4);
+      }
+
+      70% {
+        box-shadow: 0 4px 24px rgba(86, 171, 47, 0.45), 0 0 0 14px rgba(168, 224, 99, 0);
+      }
+
+      100% {
+        box-shadow: 0 4px 24px rgba(86, 171, 47, 0.45), 0 0 0 0 rgba(168, 224, 99, 0);
+      }
+    }
+
+    .drop-hint {
+      margin-top: 14px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.2);
+      letter-spacing: 1px;
+    }
+
+    .errmsg {
+      color: #ff8080;
+      font-size: 12px;
+      margin-top: 14px;
+      display: none;
+    }
+
+    .errmsg.on {
+      display: block;
+    }
+
+    /* ── LOADER ── */
+    #ldr {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70vh;
+      gap: 20px;
+    }
+
+    #ldr.on {
+      display: flex;
+    }
+
+    .lring {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid rgba(168, 224, 99, 0.15);
+      border-top-color: var(--ac);
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .llbl {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .pgwrap {
+      width: 240px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .pgbar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--ac2), var(--ac));
+      width: 0%;
+      border-radius: 2px;
+      transition: width .4s ease;
+    }
+
+    .lsteps {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .lstep {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: color .3s;
+    }
+
+    .lstep::before {
+      content: '○';
+      font-size: 9px;
+      flex-shrink: 0;
+    }
+
+    .lstep.a {
+      color: var(--ac)
+    }
+
+    .lstep.a::before {
+      content: '◉';
+    }
+
+    .lstep.d {
+      color: rgba(255, 255, 255, 0.3)
+    }
+
+    .lstep.d::before {
+      content: '✓';
+      color: var(--ok);
+    }
+
+    /* ── RESULT ── */
+    #result {
+      display: none;
+    }
+
+    #result.on {
+      display: block;
+      animation: fadeIn .4s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .rhead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 32px 0 20px;
+    }
+
+    .rtitle {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 700;
+      font-style: italic;
+    }
+
+    .rmeta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+      letter-spacing: .5px;
+    }
+
+    .newbtn {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--muted);
+      padding: 8px 18px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 20px;
+      transition: all .2s;
+    }
+
+    .newbtn:hover {
+      border-color: var(--ac);
+      color: var(--ac);
+    }
+
+    /* Stats */
+    .strip {
+      display: flex;
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      backdrop-filter: blur(12px);
+    }
+
+    .sitem {
+      flex: 1;
+      padding: 12px 10px;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      text-align: center;
+    }
+
+    .sitem:last-child {
+      border-right: none;
+    }
+
+    .sname {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .sval {
+      font-family: 'Playfair Display', serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ac);
+    }
+
+    /* Photos */
+    .photos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media(max-width:620px) {
+      .photos {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .pcard {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      overflow: hidden;
+      position: relative;
+      backdrop-filter: blur(12px);
+    }
+
+    .pcard img {
+      width: 100%;
+      display: block;
+      max-height: 520px;
+      object-fit: contain;
+      background: #0a0c09;
+    }
+
+    .plbl {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 6px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .plbl.ed {
+      background: rgba(86, 171, 47, 0.15);
+      color: var(--ac);
+      border: 1px solid rgba(168, 224, 99, 0.3);
+    }
+
+    /* Download button */
+    .dlwrap {
+      padding: 12px;
+    }
+
+    .dlbtn {
+      width: 100%;
+      padding: 15px 20px;
+      background: linear-gradient(135deg, var(--ac2), var(--ac));
+      color: #081403;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 24px rgba(86, 171, 47, 0.35);
+      transition: all .22s;
+    }
+
+    .dlbtn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 36px rgba(86, 171, 47, 0.55);
+    }
+
+    .dlbtn:active {
+      transform: translateY(1px);
+    }
+
+    .dlbtn.ok {
+      background: linear-gradient(135deg, #1a6e3a, var(--ok));
+    }
+
+    .dlbtn svg {
+      flex-shrink: 0;
+    }
+
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div style="position: fixed; inset: 0; z-index: -1; overflow: hidden;">
+    <div
+      style="background-image: url('photo.jpg'); background-size: cover; background-position: center; filter: blur(60px); transform: scale(1.1); width: 100%; height: 100%; opacity: 0.5;">
+    </div>
+    <div style="position: absolute; inset: 0; background: radial-gradient(circle at center, transparent, #0a0c09);">
+    </div>
+  </div>
+  <div class="grain"></div>
+  <div class="page">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="brand">
+        <div class="brand-icon">🌿</div>
+        <div class="brand-text">
+          <div class="brand-name">KS LAB</div>
+          <div class="brand-sub">Natural Photo Editor</div>
+        </div>
+      </div>
+      <div class="header-badge">@siva_rkl</div>
+    </div>
+
+    <!-- UPLOAD -->
+    <div id="uploadWrap">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+
+        <!-- MONKEY MASCOT -->
+        <div class="monkey-wrap">
+          <div class="monkey">
+            <div class="monkey-cap"></div>
+            <div class="monkey-face"></div>
+            <div class="monkey-eyes">
+              <div class="eye"></div>
+              <div class="eye"></div>
+            </div>
+            <div class="monkey-nose"></div>
+            <div class="monkey-mouth"></div>
+            <div class="monkey-arm"></div>
+          </div>
+        </div>
+
+        <!-- UPLOAD CARD -->
+        <div class="upload-card" id="zone">
+          <div class="upload-title">upload your photo</div>
+          <div class="upload-sub">
+            Upload any image — auto-edited at full resolution.<br />
+            Brightness, contrast, sharpness, skin smooth.
+          </div>
+          <button class="pick-btn" id="pickBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            Choose Photo
+          </button>
+          <div class="drop-hint">or drag &amp; drop anywhere</div>
+        </div>
+        <div class="errmsg" id="err"></div>
+      </div>
+    </div>
+
+    <!-- LOADER -->
+    <div id="ldr">
+      <div class="lring"></div>
+      <div class="llbl">Editing your photo…</div>
+      <div class="pgwrap">
+        <div class="pgbar" id="pg"></div>
+      </div>
+      <div class="lsteps">
+        <div class="lstep" id="s1">Loading full resolution</div>
+        <div class="lstep" id="s2">Brightness &amp; contrast</div>
+        <div class="lstep" id="s3">Sharpen &amp; skin smooth</div>
+        <div class="lstep" id="s4">Preparing PNG output</div>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div id="result">
+      <div class="rhead">
+        <div>
+          <div class="rtitle">Photo Ready ✦</div>
+          <div class="rmeta" id="meta">—</div>
+        </div>
+        <button class="newbtn" onclick="reset()">+ New Photo</button>
+      </div>
+
+      <div class="strip">
+        <div class="sitem">
+          <div class="sname">Brightness</div>
+          <div class="sval" id="vBr">—</div>
+        </div>
+        <div class="sitem">
+          <div class="sname">Contrast</div>
+          <div class="sval" id="vCo">—</div>
+        </div>
+        <div class="sitem">
+          <div class="sname">Sharpness</div>
+          <div class="sval" id="vSh">—</div>
+        </div>
+        <div class="sitem">
+          <div class="sname">Smooth</div>
+          <div class="sval" id="vSm">—</div>
+        </div>
+        <div class="sitem">
+          <div class="sname">Saturation</div>
+          <div class="sval" id="vSa">—</div>
+        </div>
+      </div>
+
+      <div class="photos">
+        <div class="pcard">
+          <div class="plbl">Original</div>
+          <img id="imgOrig" src="" alt="original" />
+        </div>
+        <div class="pcard">
+          <div class="plbl ed">Edited ✨</div>
+          <img id="imgEdit" src="" alt="edited" />
+          <div class="dlwrap">
+            <button class="dlbtn" id="dlbtn" onclick="dl()">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Download Full Quality
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <canvas id="sc"></canvas>
+  <canvas id="dc"></canvas>
+  <input type="file" id="fi" accept="image/*" style="display:none" />
+
+  <script>
+    let pngUrl = '', fname = 'photo';
+    const $ = id => document.getElementById(id);
+    const uw = $('uploadWrap'), ldr = $('ldr'), res = $('result');
+    const sc = $('sc'), dc = $('dc');
+
+    // Events
+    $('pickBtn').addEventListener('click', e => { e.stopPropagation(); $('fi').value = ''; $('fi').click(); });
+    $('zone').addEventListener('click', e => { if (e.target.id === 'pickBtn' || e.target.closest('#pickBtn')) return; $('fi').value = ''; $('fi').click(); });
+    $('fi').addEventListener('change', () => { const f = $('fi').files[0]; if (f) { fname = f.name.replace(/\.[^.]+$/, ''); go(f); } });
+    $('zone').addEventListener('dragover', e => { e.preventDefault(); $('zone').classList.add('over'); });
+    $('zone').addEventListener('dragleave', () => $('zone').classList.remove('over'));
+    $('zone').addEventListener('drop', e => {
+      e.preventDefault(); $('zone').classList.remove('over');
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) { fname = f.name.replace(/\.[^.]+$/, ''); go(f); }
+      else { $('err').textContent = 'Please drop a valid image (JPG/PNG/WEBP).'; $('err').classList.add('on'); }
+    });
+
+    // Download
+    function dl() {
+      if (!pngUrl) return;
+      const a = document.createElement('a');
+      a.href = pngUrl; a.download = fname + '_KSLAB.png';
+      a.style.display = 'none'; document.body.appendChild(a); a.click();
+      setTimeout(() => document.body.removeChild(a), 800);
+      const btn = $('dlbtn');
+      btn.classList.add('ok');
+      btn.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved to Downloads!';
+      setTimeout(() => {
+        btn.classList.remove('ok');
+        btn.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download Full Quality';
+      }, 3000);
+    }
+
+    // Pipeline
+    function go(file) {
+      $('err').classList.remove('on');
+      uw.style.display = 'none'; ldr.classList.add('on'); pg(0);
+      const img = new Image();
+      img.onload = () => pipe(img);
+      img.onerror = () => { ldr.classList.remove('on'); uw.style.display = ''; $('err').textContent = 'Cannot load image.'; $('err').classList.add('on'); };
+      img.src = URL.createObjectURL(file);
+    }
+
+    async function pipe(img) {
+      on('s1'); pg(8);
+      const W = img.naturalWidth, H = img.naturalHeight;
+      sc.width = dc.width = W; sc.height = dc.height = H;
+      const sx = sc.getContext('2d');
+      sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high';
+      sx.drawImage(img, 0, 0, W, H);
+      const raw = sx.getImageData(0, 0, W, H);
+      $('imgOrig').src = sc.toDataURL('image/jpeg', 0.93);
+      done('s1'); pg(28); await t(70);
+
+      on('s2');
+      const an = analyse(raw); const p = params(an);
+      const p1 = pass1(raw.data, p);
+      done('s2'); pg(54); await t(60);
+
+      on('s3');
+      const p2 = sharpen(p1, W, H, p.sh);
+      const p3 = smooth(p2, W, H, p.ss);
+      done('s3'); pg(82); await t(60);
+
+      on('s4');
+      const dx = dc.getContext('2d');
+      dx.imageSmoothingEnabled = true; dx.imageSmoothingQuality = 'high';
+      dx.putImageData(new ImageData(p3, W, H), 0, 0);
+      pngUrl = dc.toDataURL('image/png');
+      $('imgEdit').src = dc.toDataURL('image/jpeg', 0.96);
+      done('s4'); pg(100); await t(280);
+
+      ldr.classList.remove('on');
+      show(an, p, W, H);
+    }
+
+    function analyse(id) {
+      const d = id.data; let r = 0, g = 0, b = 0, br = 0, n = 0;
+      for (let i = 0; i < d.length; i += 32) { r += d[i]; g += d[i + 1]; b += d[i + 2]; br += .299 * d[i] + .587 * d[i + 1] + .114 * d[i + 2]; n++; }
+      const ar = r / n, ag = g / n, ab = b / n, abr = br / n;
+      const mx = Math.max(ar, ag, ab), mn = Math.min(ar, ag, ab);
+      return { abr, sat: mx > 0 ? (mx - mn) / mx : 0 };
+    }
+    function params(a) {
+      let ba = 0;
+      if (a.abr < 75) ba = 30; else if (a.abr < 108) ba = 15;
+      else if (a.abr > 188) ba = -15; else if (a.abr > 168) ba = -8;
+      return { ba, ca: .09 + (a.sat < .15 ? .06 : 0), sh: .32, ss: .28, sa: a.sat < .2 ? 1.14 : a.sat < .35 ? 1.07 : 1.01 };
+    }
+    function pass1(src, p) {
+      const out = new Uint8ClampedArray(src.length);
+      const c = 1 + p.ca, m = 128;
+      for (let i = 0; i < src.length; i += 4) {
+        let r = src[i], g = src[i + 1], b = src[i + 2];
+        r = cl(r + p.ba); g = cl(g + p.ba); b = cl(b + p.ba);
+        r = cl((r - m) * c + m); g = cl((g - m) * c + m); b = cl((b - m) * c + m);
+        const l = .299 * r + .587 * g + .114 * b;
+        r = cl(l + (r - l) * p.sa); g = cl(l + (g - l) * p.sa); b = cl(l + (b - l) * p.sa);
+        out[i] = r; out[i + 1] = g; out[i + 2] = b; out[i + 3] = src[i + 3];
+      }
+      return out;
+    }
+    function blur(data, W, H) {
+      const out = new Uint8ClampedArray(data.length);
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          let rv = 0, gv = 0, bv = 0, n = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const nx = Math.min(W - 1, Math.max(0, x + dx)), ny = Math.min(H - 1, Math.max(0, y + dy));
+              const ni = (ny * W + nx) * 4; rv += data[ni]; gv += data[ni + 1]; bv += data[ni + 2]; n++;
+            }
+          }
+          const i = (y * W + x) * 4; out[i] = rv / n; out[i + 1] = gv / n; out[i + 2] = bv / n; out[i + 3] = data[i + 3];
+        }
+      }
+      return out;
+    }
+    function sharpen(data, W, H, amt) {
+      const bl = blur(data, W, H); const out = new Uint8ClampedArray(data.length);
+      for (let i = 0; i < data.length; i += 4) {
+        out[i] = cl(data[i] + amt * (data[i] - bl[i]));
+        out[i + 1] = cl(data[i + 1] + amt * (data[i + 1] - bl[i + 1]));
+        out[i + 2] = cl(data[i + 2] + amt * (data[i + 2] - bl[i + 2]));
+        out[i + 3] = data[i + 3];
+      }
+      return out;
+    }
+    function smooth(data, W, H, s) {
+      const bl = blur(data, W, H); const out = new Uint8ClampedArray(data.length);
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const l = .299 * r + .587 * g + .114 * b;
+        const w = (r > g && r > b && l > 60 && l < 220 && (r - b) > 10) ? s : 0;
+        out[i] = cl(r * (1 - w) + bl[i] * w); out[i + 1] = cl(g * (1 - w) + bl[i + 1] * w); out[i + 2] = cl(b * (1 - w) + bl[i + 2] * w); out[i + 3] = data[i + 3];
+      }
+      return out;
+    }
+    function cl(v) { return Math.min(255, Math.max(0, Math.round(v))); }
+    function show(an, p, W, H) {
+      $('vBr').textContent = p.ba > 0 ? '+' + p.ba : p.ba === 0 ? '0' : '' + p.ba;
+      $('vCo').textContent = '+' + (p.ca * 100).toFixed(0) + '%';
+      $('vSh').textContent = (p.sh * 100).toFixed(0) + '%';
+      $('vSm').textContent = (p.ss * 100).toFixed(0) + '%';
+      $('vSa').textContent = '×' + p.sa.toFixed(2);
+      $('meta').textContent = W + ' × ' + H + ' px  •  Lossless PNG  •  Full Resolution';
+      res.classList.add('on');
+      res.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function on(id) { $(id).className = 'lstep a'; }
+    function done(id) { $(id).className = 'lstep d'; }
+    function pg(v) { $('pg').style.width = v + '%'; }
+    function t(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function reset() {
+      pngUrl = ''; res.classList.remove('on'); uw.style.display = '';
+      ldr.classList.remove('on'); $('fi').value = '';
+      $('imgOrig').src = ''; $('imgEdit').src = '';
+      ['s1', 's2', 's3', 's4'].forEach(id => $(id).className = 'lstep');
+      pg(0); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+
+</html>
